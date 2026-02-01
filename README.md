@@ -13,16 +13,28 @@ The application fetches **weather data** from the backend API and displays it on
 
 ```
 User Browser
-      |
+      |   ( public ip or dns ) i used public ip to go user request from browser to frontend (nginx) because browser not in docker network so 
       v
-Frontend (React + Nginx)
-      |
+Frontend (React + Nginx) - for communicate frontend to backend i used weather-backend container name(dns) for internal communication in docker network .. docker handle automatically
+      |   http://weather-backend:5000
       v
-Backend (Node.js / Express API)
-      |
+Backend (Node.js / Express API) - for communicate backend to frontend i used weather-mongo container name(dns) for internal communication in docker network .. docker handle automatically
+      |  mongodb://weather-mongo:27017
       v
 Database (MongoDB)
+
+................................
+
 ```
+Docker (Local / VM)
+Backend ↔ DB → container name
+Frontend → Backend → IP / domain
+
+Kubernetes
+Pod ↔ Pod → Service name
+Browser → App → Ingress / LB URL
+
+
 
 | Tier         | Component | Responsibility                  |
 |--------------|-----------|----------------------------------|
