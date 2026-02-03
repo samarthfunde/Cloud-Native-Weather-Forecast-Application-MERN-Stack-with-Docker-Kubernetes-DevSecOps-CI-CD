@@ -1,27 +1,22 @@
 import express from "express";
-import cors from "cors";
 import axios from "axios";
+import cors from "cors";
 import dotenv from "dotenv";
-import connectDB from "./db.js"; // your MongoDB connection
+import connectDB from "./db.js";
 import Weather from "./models/weather.js";
 
 dotenv.config();
 
 const app = express();
-
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Connect to MongoDB
 connectDB();
 
-// Routes
 app.get("/weather/:city", async (req, res) => {
   try {
-    const city = encodeURIComponent(req.params.city);
+    const city = req.params.city;
 
-    // Geocoding API
     const geoRes = await axios.get(
       `https://geocoding-api.open-meteo.com/v1/search?name=${city}`
     );
@@ -32,12 +27,10 @@ app.get("/weather/:city", async (req, res) => {
 
     const cityInfo = geoRes.data.results[0];
 
-    // Weather API
     const weatherRes = await axios.get(
       `https://api.open-meteo.com/v1/forecast?latitude=${cityInfo.latitude}&longitude=${cityInfo.longitude}&current_weather=true`
     );
 
-    // Save to MongoDB
     const newWeather = new Weather({
       city: cityInfo.name,
       country: cityInfo.country,
@@ -50,7 +43,6 @@ app.get("/weather/:city", async (req, res) => {
 
     await newWeather.save();
 
-    // Respond
     res.json({
       city: cityInfo.name,
       country: cityInfo.country,
@@ -61,13 +53,12 @@ app.get("/weather/:city", async (req, res) => {
     });
 
   } catch (error) {
-    console.error(error.response?.data || error.message);
+    console.error(error);
     res.status(500).json({ message: "Server error" });
   }
 });
 
-// **Listen on all interfaces so Docker can access it**
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Backend server running on port ${PORT}`);
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });

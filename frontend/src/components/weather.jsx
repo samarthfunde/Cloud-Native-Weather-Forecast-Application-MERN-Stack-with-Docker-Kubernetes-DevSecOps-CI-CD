@@ -10,24 +10,25 @@ function Weather() {
   const [loading, setLoading] = useState(false);
 
   const getWeather = async () => {
-    if (!city) return;
+  if (!city) return;
 
-    setLoading(true);
-    setError("");
+  setLoading(true);
+  setError("");
 
-    try {
-      const res = await axios.get(
-        `http://localhost:5000/weather/${city}`
-      );
+  try {
+    const res = await axios.get(`/api/weather/${encodeURIComponent(city)}`);
 
-      setWeather(res.data);
-    } catch {
-      setError("City not found");
-      setWeather(null);
-    } finally {
-      setLoading(false);
-    }
-  };
+
+    setWeather(res.data);
+  } catch (err) {
+    console.error(err);
+    setError("City not found");
+    setWeather(null);
+  } finally {
+    setLoading(false);
+  }
+};
+  
 
   const getWeatherIcon = (code) => {
     if (code <= 3) return "☀️";
