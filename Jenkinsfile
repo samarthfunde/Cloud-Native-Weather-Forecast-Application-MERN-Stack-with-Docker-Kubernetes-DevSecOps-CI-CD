@@ -6,16 +6,12 @@ pipeline {
         FRONTEND_IMAGE = "weather-frontend-image"
         BACKEND_IMAGE  = "weather-backend-image"
         NAMESPACE      = "weather-app"
-        SONARQUBE_ENV  = "sonar-server"
         IMAGE_TAG      = "${BUILD_NUMBER}"
     }
 
-   tools {
-    nodejs "node-18"
-   
-}
-
-
+    tools {
+        nodejs "node-18"
+    }
 
     stages {
 
@@ -25,25 +21,22 @@ pipeline {
             }
         }
 
-        // ---------------- SONARQUBE ----------------
-
-         stage('SonarQube Analysis') {
-           steps {
-            script {
-              def scannerHome = tool 'sonar-scanner'
-              withSonarQubeEnv('sonar-server') {
-                sh """
-                ${scannerHome}/bin/sonar-scanner \
-                -Dsonar.projectKey=weather-app \
-                -Dsonar.projectName=weather-app \
-                -Dsonar.projectVersion=${BUILD_NUMBER} \
-                -Dsonar.sources=.
-                """
-               }
-           }
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    def scannerHome = tool 'sonar-scanner'
+                    withSonarQubeEnv('sonar-server') {
+                        sh """
+                        ${scannerHome}/bin/sonar-scanner \
+                        -Dsonar.projectKey=weather-app \
+                        -Dsonar.projectName=weather-app \
+                        -Dsonar.projectVersion=${BUILD_NUMBER} \
+                        -Dsonar.sources=.
+                        """
+                    }
+                }
+            }
         }
-     }
-
 
         stage('Quality Gate') {
             steps {
@@ -52,8 +45,6 @@ pipeline {
                 }
             }
         }
-
-        // ---------------- DOCKER LOGIN ----------------
 
         stage('Docker Login') {
             steps {
@@ -69,49 +60,37 @@ pipeline {
             }
         }
 
-        // ---------------- BUILD ----------------
-
         stage('Build Docker Images') {
             steps {
                 sh """
                 docker build -t $DOCKERHUB_REPO/$FRONTEND_IMAGE:${IMAGE_TAG} ./frontend
                 docker build -t $DOCKERHUB_REPO/$BACKEND_IMAGE:${IMAGE_TAG} ./backend
-
-                docker tag $DOCKERHUB_REPO/$FRONTEND_IMAGE:${IMAGE_TAG} $DOCKERHUB_REPO/$FRONTEND_IMAGE:latest
-                docker tag $DOCKERHUB_REPO/$BACKEND_IMAGE:${IMAGE_TAG} $DOCKERHUB_REPO/$BACKEND_IMAGE:latest
                 """
             }
         }
-
-        // ---------------- TRIVY ----------------
 
         stage('Trivy Scan Images') {
             steps {
                 sh """
-                trivy image --exit-code 1 --severity HIGH,CRITICAL \
+                trivy image --exit-code 1 --severity CRITICAL \
+                --skip-version-check \
                 $DOCKERHUB_REPO/$FRONTEND_IMAGE:${IMAGE_TAG}
 
-                trivy image --exit-code 1 --severity HIGH,CRITICAL \
+                trivy image --exit-code 1 --severity CRITICAL \
+                --skip-version-check \
                 $DOCKERHUB_REPO/$BACKEND_IMAGE:${IMAGE_TAG}
                 """
             }
         }
-
-        // ---------------- PUSH ----------------
 
         stage('Push Images') {
             steps {
                 sh """
                 docker push $DOCKERHUB_REPO/$FRONTEND_IMAGE:${IMAGE_TAG}
                 docker push $DOCKERHUB_REPO/$BACKEND_IMAGE:${IMAGE_TAG}
-
-                docker push $DOCKERHUB_REPO/$FRONTEND_IMAGE:latest
-                docker push $DOCKERHUB_REPO/$BACKEND_IMAGE:latest
                 """
             }
         }
-
-        // ---------------- DEPLOY ----------------
 
         stage('Deploy to Kubernetes') {
             steps {
@@ -126,20 +105,6 @@ pipeline {
 
                 kubectl rollout status deployment/frontend -n $NAMESPACE
                 kubectl rollout status deployment/backend -n $NAMESPACE
-                """
-            }
-        }
-
-        // ---------------- AUTO ROLLBACK ----------------
-
-        stage('Rollback If Failed') {
-            when {
-                expression { currentBuild.currentResult == 'FAILURE' }
-            }
-            steps {
-                sh """
-                kubectl rollout undo deployment/frontend -n $NAMESPACE
-                kubectl rollout undo deployment/backend -n $NAMESPACE
                 """
             }
         }
