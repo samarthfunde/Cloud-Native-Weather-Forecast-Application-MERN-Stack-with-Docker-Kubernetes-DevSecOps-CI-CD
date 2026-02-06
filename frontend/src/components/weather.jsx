@@ -40,7 +40,7 @@ function Weather() {
 
   return (
     <div className="weather-container">
-      <h1 className="title">Weather Forecast App</h1>
+      <h1 className="title">Weather Forecast Application</h1>
 
       <div className="search-box">
         <input
@@ -91,3 +91,4 @@ function Weather() {
 }
 
 export default Weather;
+
