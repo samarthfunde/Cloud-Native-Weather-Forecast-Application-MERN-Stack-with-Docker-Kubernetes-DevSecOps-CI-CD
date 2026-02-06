@@ -1,19 +1,13 @@
-# Build stage
-FROM node:20.11-alpine3.19 AS build
+FROM node:20-alpine
+
 WORKDIR /app
 
 COPY package*.json ./
+
 RUN npm ci
 
 COPY . .
-RUN npm run build
 
-# Runtime stage
-FROM nginx:1.25-alpine
+EXPOSE 5000
 
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /app/build /usr/share/nginx/html
-
-EXPOSE 80
-
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["node", "server.js"]
