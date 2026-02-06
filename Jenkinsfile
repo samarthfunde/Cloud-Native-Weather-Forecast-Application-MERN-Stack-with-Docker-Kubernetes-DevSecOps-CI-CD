@@ -10,10 +10,11 @@ pipeline {
         IMAGE_TAG      = "${BUILD_NUMBER}"
     }
 
-    tools {
+   tools {
     nodejs "node-18"
-    sonarQubeScanner "sonar-scanner"
+    sonarRunner "sonar-scanner"
 }
+
 
 
     stages {
