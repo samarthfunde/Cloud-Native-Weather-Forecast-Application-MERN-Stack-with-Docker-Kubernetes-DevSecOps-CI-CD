@@ -12,7 +12,7 @@ pipeline {
 
    tools {
     nodejs "node-18"
-    sonarRunner "sonar-scanner"
+   
 }
 
 
@@ -27,19 +27,23 @@ pipeline {
 
         // ---------------- SONARQUBE ----------------
 
-        stage('SonarQube Analysis') {
-            steps {
-                withSonarQubeEnv("${SONARQUBE_ENV}") {
-                    sh """
-                    sonar-scanner \
-                    -Dsonar.projectKey=weather-app \
-                    -Dsonar.projectName=weather-app \
-                    -Dsonar.projectVersion=${BUILD_NUMBER} \
-                    -Dsonar.sources=.
-                    """
-                }
-            }
+         stage('SonarQube Analysis') {
+           steps {
+            script {
+              def scannerHome = tool 'sonar-scanner'
+              withSonarQubeEnv('sonar-server') {
+                sh """
+                ${scannerHome}/bin/sonar-scanner \
+                -Dsonar.projectKey=weather-app \
+                -Dsonar.projectName=weather-app \
+                -Dsonar.projectVersion=${BUILD_NUMBER} \
+                -Dsonar.sources=.
+                """
+               }
+           }
         }
+     }
+
 
         stage('Quality Gate') {
             steps {
