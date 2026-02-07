@@ -2,10 +2,7 @@
 
 ##  Project Purpose
 
-This project demonstrates a **real-world 3-tier application** implemented using **Docker**.  
-It is designed to help beginners and interview candidates understand **frontend, backend, and database communication** using Docker networking, volumes, and environment variables.
-
-The application fetches **weather data** from the backend API and displays it on the frontend UI while storing logs/data in the database.
+The purpose of this project is to build a cloud-native 3-tier MERN stack Weather Application where users can search for any city and view real-time weather data. The application stores searched data in MongoDB and is deployed using a complete DevSecOps pipeline with Docker, Jenkins, SonarQube, Trivy, and Kubernetes to ensure automated build, security scanning, scalability, rolling updates, and rollback capability.
 
 ---
 
