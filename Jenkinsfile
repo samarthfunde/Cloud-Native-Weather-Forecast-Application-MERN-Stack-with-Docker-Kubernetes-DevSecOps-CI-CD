@@ -13,7 +13,8 @@ pipeline {
         nodejs "node-18"
     }
 
-    stages {
+    //stage: 1
+      stages {
 
         stage('Checkout Code') {
             steps {
@@ -21,6 +22,7 @@ pipeline {
             }
         }
 
+        //stage: 2
         stage('SonarQube Analysis') {
             steps {
                 script {
@@ -38,6 +40,7 @@ pipeline {
             }
         }
 
+        //stage: 3
         stage('Quality Gate') {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
@@ -46,6 +49,7 @@ pipeline {
             }
         }
 
+        //stage: 4
         stage('Docker Login') {
             steps {
                 withCredentials([usernamePassword(
@@ -60,6 +64,7 @@ pipeline {
             }
         }
 
+        //stage: 5
         stage('Build Docker Images') {
             steps {
                 sh """
@@ -69,6 +74,33 @@ pipeline {
             }
         }
 
+        // following code we use for if developer change in the frontend then only build the frontend image not backend backend at that time
+        // stage('Build Frontend') {
+        //     when {
+        //         changeset "frontend/**"
+        //       }
+        // steps {
+        //     sh """
+        //     docker build -t $DOCKERHUB_REPO/$FRONTEND_IMAGE:${IMAGE_TAG} ./frontend
+        //     """
+        //  }
+        // }
+        
+        // following code we use for if developer change in the backend then only build the backend image not frontend build at that time
+        // stage('Build Backend') {
+        //     when {
+        //         changeset "backend/**"
+        //      }
+        // steps {
+        //       sh """
+        //       docker build -t $DOCKERHUB_REPO/$BACKEND_IMAGE:${IMAGE_TAG} ./backend
+        //       """
+        //     }
+        //   }
+
+
+    
+        //stage: 6
         stage('Trivy Scan Images') {
             steps {
                 sh """
@@ -83,6 +115,7 @@ pipeline {
             }
         }
 
+        //stage: 7
         stage('Push Images') {
             steps {
                 sh """
@@ -92,6 +125,7 @@ pipeline {
             }
         }
 
+        //stage: 8
         stage('Deploy to Kubernetes') {
             steps {
                 sh """
