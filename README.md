@@ -1121,6 +1121,8 @@ If no critical issues:
 ```
 Total: 0 (CRITICAL: 0)
 ```
+we can check manually image on ec2 : trivy image samarthfunde/weather-backend-image:78
+it will show us anything status of image
 
 ---
 
