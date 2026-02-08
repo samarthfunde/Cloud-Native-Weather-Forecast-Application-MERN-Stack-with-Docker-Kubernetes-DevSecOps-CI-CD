@@ -1197,6 +1197,31 @@ Kubernetes automatically rolls back to previous ReplicaSet.
 | Containerization | Docker | Immutable builds |
 | Orchestration | Kubernetes | Deployment & scaling |
 
+
+
+### Jenkins Snapshots
+
+#### Error in CI/CD:
+
+<img width="1919" height="945" alt="Screenshot 2026-02-04 155440" src="https://github.com/user-attachments/assets/ea213b5f-57c8-4e40-a1c5-50a36ad39031" />
+
+#### Sonarqube Quality Gate:
+
+<img width="1914" height="951" alt="Screenshot 2026-02-04 181451" src="https://github.com/user-attachments/assets/d1ea4e31-154e-4520-a984-cd270eaf1f86" />
+
+#### Trivy Scan:
+
+<img width="1919" height="965" alt="Screenshot 2026-02-07 013951" src="https://github.com/user-attachments/assets/4f27f45e-726f-4ba8-84c9-121d831a5037" />
+
+<img width="1917" height="905" alt="Screenshot 2026-02-05 005527" src="https://github.com/user-attachments/assets/0346799d-c419-4a9c-b485-10463f81533c" />
+
+<img width="1919" height="941" alt="Screenshot 2026-02-05 005549" src="https://github.com/user-attachments/assets/b6191c5b-5cb2-4c43-9125-987efc38fc0c" />
+
+<img width="1919" height="946" alt="Screenshot 2026-02-05 005737" src="https://github.com/user-attachments/assets/37ecb425-8a81-440b-b44a-47b087423139" />
+
+#### Success of CI/CD
+
+
 ---
 
 
