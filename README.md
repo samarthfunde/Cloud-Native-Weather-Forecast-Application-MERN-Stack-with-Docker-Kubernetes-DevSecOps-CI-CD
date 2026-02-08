@@ -1329,13 +1329,13 @@ This project successfully implements:
 - GitHub Webhook automation
 - Version-controlled deployments
 
-### Snapshot after change frontend code by developer
+### Snapshots of after change frontend code by developer
 
 ### Before:
 
 <img width="1912" height="969" alt="Screenshot 2026-02-07 022834" src="https://github.com/user-attachments/assets/3b9137ce-7861-41c3-9ef5-7fb8cfcd6e52" />
 
-### After ( means updated version of image in the k8s frontend deployment through the jenkins ci/cd)
+### After ( updated version of image in the k8s frontend deployment through the jenkins ci/cd)
 
 <img width="1919" height="965" alt="Screenshot 2026-02-07 023930" src="https://github.com/user-attachments/assets/6ec7aa37-7930-41d9-bb9e-da68cb312311" />
 
