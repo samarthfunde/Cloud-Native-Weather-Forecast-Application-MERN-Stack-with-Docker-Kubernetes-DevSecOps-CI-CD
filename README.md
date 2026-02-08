@@ -8,7 +8,7 @@ The purpose of this project is to build a cloud-native 3-tier MERN stack Weather
 
 ##  Project Architecture
 
-![Uploading Weather-Application-Complete-Devops-Architecture-drawio.png…]()
+<img width="686" height="381" alt="Weather-Application-Complete-Devops-Architecture-drawio" src="https://github.com/user-attachments/assets/91f9fb8b-e61b-43b9-9567-040faf993c06" />
 
 
 
