@@ -20,7 +20,6 @@ Backend (Node.js / Express API) - for communicate backend to frontend i used wea
       v
 Database (MongoDB)
 
-................................
 
 ```
 Docker (Local / VM)
@@ -286,8 +285,8 @@ db.weather.find()
 4. No IP address is hardcoded anywhere in the project.
 
 ```
-✔ Frontend  →  Backend  →  Database
-✔ Secure & Scalable Architecture
+ Frontend  →  Backend  →  Database
+ Secure & Scalable Architecture
 ```
 
 ---
@@ -315,3 +314,979 @@ docker push yourname/weather-backend:v1
 ```
 
 ---
+
+
+
+# Step 2: Kubernetes Implementation
+
+## Prerequisites
+
+Before deploying ensure the following:
+
+- Docker images are built and pushed to DockerHub
+- Kubernetes cluster is created using kubeadm
+- kubectl is configured and working
+- Worker nodes are in Ready state
+- CNI network plugin like Calico is installed
+
+Verify cluster status:
+```bash
+kubectl get nodes
+```
+
+## Project Structure
+```
+weather-k8s/
+├── namespace.yaml
+├── backend/
+│   ├── backend-configmap.yaml
+│   ├── backend-secret.yaml
+│   ├── backend-deployment.yaml
+│   └── backend-service.yaml
+├── database/
+│   ├── mongo-pv.yaml
+│   ├── mongo-pvc.yaml
+│   ├── mongo-deployment.yaml
+│   └── mongo-service.yaml
+└── frontend/
+    ├── frontend-deployment.yaml
+    └── frontend-service.yaml
+```
+
+## Deployment Steps
+
+### Step 1: Create Namespace
+
+Apply the namespace configuration:
+```bash
+kubectl apply -f namespace.yaml
+```
+
+Verify namespace creation:
+```bash
+kubectl get ns
+```
+
+### Step 2: Deploy MongoDB Database Layer
+
+Create Persistent Volume:
+```bash
+kubectl apply -f database/mongo-pv.yaml
+```
+
+Create Persistent Volume Claim:
+```bash
+kubectl apply -f database/mongo-pvc.yaml
+```
+
+Deploy MongoDB:
+```bash
+kubectl apply -f database/mongo-deployment.yaml
+```
+
+Create MongoDB Service:
+```bash
+kubectl apply -f database/mongo-service.yaml
+```
+
+Verify database deployment:
+```bash
+kubectl get pods -n weather-app
+kubectl get pvc -n weather-app
+```
+
+### Step 3: Deploy Backend Application Layer
+
+Create ConfigMap for environment variables:
+```bash
+kubectl apply -f backend/backend-configmap.yaml
+```
+
+Create Secret for sensitive data:
+```bash
+kubectl apply -f backend/backend-secret.yaml
+```
+
+Deploy Backend application:
+```bash
+kubectl apply -f backend/backend-deployment.yaml
+```
+
+Create Backend Service:
+```bash
+kubectl apply -f backend/backend-service.yaml
+```
+
+Verify backend deployment:
+```bash
+kubectl get pods -n weather-app
+kubectl get svc -n weather-app
+```
+
+### Step 4: Deploy Frontend Presentation Layer
+
+Deploy Frontend application:
+```bash
+kubectl apply -f frontend/frontend-deployment.yaml
+```
+
+Create Frontend Service:
+```bash
+kubectl apply -f frontend/frontend-service.yaml
+```
+
+Verify frontend deployment:
+```bash
+kubectl get pods -n weather-app
+kubectl get svc -n weather-app
+```
+
+## Access Application
+
+Get service details:
+```bash
+kubectl get svc -n weather-app
+```
+
+If using NodePort service access via:
+```
+http://NODE_IP:NODE_PORT
+```
+
+Example:
+```
+http://192.168.1.100:30008
+```
+
+## Updating Application After New Docker Image Push
+
+Update frontend image:
+```bash
+kubectl set image deployment/frontend frontend-container=username/weather-frontend:new-tag -n weather-app
+```
+
+Update backend image:
+```bash
+kubectl set image deployment/backend backend-container=username/weather-backend:new-tag -n weather-app
+```
+
+Check rollout status:
+```bash
+kubectl rollout status deployment/frontend -n weather-app
+kubectl rollout status deployment/backend -n weather-app
+```
+
+## Rollback Deployment
+
+Check deployment history:
+```bash
+kubectl rollout history deployment/frontend -n weather-app
+```
+
+Rollback to previous version:
+```bash
+kubectl rollout undo deployment/frontend -n weather-app
+```
+
+## Monitoring and Debugging
+
+View all pods:
+```bash
+kubectl get pods -n weather-app
+```
+
+Describe specific pod:
+```bash
+kubectl describe pod POD_NAME -n weather-app
+```
+
+View pod logs:
+```bash
+kubectl logs POD_NAME -n weather-app
+```
+
+View live logs:
+```bash
+kubectl logs -f POD_NAME -n weather-app
+```
+
+Execute commands inside pod:
+```bash
+kubectl exec -it POD_NAME -n weather-app -- /bin/bash
+```
+
+## Delete All Resources
+
+Delete entire namespace and all resources:
+```bash
+kubectl delete namespace weather-app
+```
+
+Or delete individually:
+```bash
+kubectl delete -f frontend/
+kubectl delete -f backend/
+kubectl delete -f database/
+kubectl delete -f namespace.yaml
+```
+
+## Architecture Overview
+
+- MongoDB uses Persistent Volume for data storage and durability
+- Backend connects to MongoDB using ClusterIP service
+- Frontend connects to Backend using internal service DNS
+- All components run inside weather-app namespace for isolation
+- Rolling updates enabled for zero downtime deployments
+- Horizontal scaling possible by increasing replicas
+
+## Security Implementations
+
+- Namespace isolation for resource separation
+- Kubernetes Secrets for sensitive environment variables
+- ConfigMaps for non-sensitive configuration
+- ClusterIP services for internal communication
+- NodePort or LoadBalancer for external access only where needed
+- Image pull policies configured for production use
+
+## Troubleshooting Common Issues
+
+If pods are not starting check:
+```bash
+kubectl describe pod POD_NAME -n weather-app
+```
+
+If service is not accessible check:
+```bash
+kubectl get endpoints -n weather-app
+```
+
+If persistent volume claim is pending check:
+```bash
+kubectl describe pvc PVC_NAME -n weather-app
+```
+
+## Notes
+
+- Replace NODE_IP with actual Kubernetes node IP address
+- Replace username with your DockerHub username
+- Replace new-tag with actual image tag version
+- Ensure all YAML files use correct image names from DockerHub
+- PersistentVolume path must exist on worker nodes
+- ConfigMap and Secret must be created before deployments
+
+
+
+# Step 3: Route53 ACM HTTPS TLS and Load Balancer Configuration
+
+This step explains how the application is exposed securely to end users using AWS Route 53 for DNS, AWS ACM for HTTPS TLS certificates, and AWS Load Balancer to route traffic to Kubernetes services.
+
+## Architecture Overview
+```
+User Browser
+     |
+     | https://weather.example.com
+     ↓
+Route 53 DNS
+     ↓
+AWS Application Load Balancer HTTPS 443
+     ↓
+Kubernetes Service Frontend NodePort
+     ↓
+Frontend Pod → Backend Service → Backend Pod → MongoDB
+```
+
+## Prerequisites
+
+Before starting ensure:
+
+- Domain is registered example: example.com
+- Kubernetes cluster is running on AWS EC2 instances
+- Frontend service is exposed via NodePort
+- IAM permissions for Route53, ACM, ELB, EC2
+
+## Step 3.1: Create ACM Certificate for HTTPS
+
+### Purpose
+
+ACM provides SSL TLS certificates to enable HTTPS on the Load Balancer
+
+### Steps to Create Certificate
+
+Open AWS Certificate Manager console
+
+Click on Request a certificate button
+
+Choose certificate type:
+```
+Public certificate
+```
+
+Add domain name:
+```
+weather.example.com
+```
+
+Choose validation method:
+```
+DNS validation recommended
+```
+
+Click Request button to submit
+
+Certificate status will show Pending validation
+
+## Step 3.2: Validate Certificate Using Route53
+
+### Steps to Validate
+
+Open the ACM certificate details page
+
+Click Create records in Route 53 button
+
+AWS automatically adds CNAME validation records to Route 53
+
+Wait for certificate status to change to:
+```
+Issued
+```
+
+Validation typically takes 5 to 10 minutes
+
+Certificate is now ready to use with HTTPS
+
+## Step 3.3: Create Application Load Balancer
+
+### Steps to Create ALB
+
+Open EC2 console and navigate to Load Balancers
+
+Click Create Load Balancer button
+
+Choose load balancer type:
+```
+Application Load Balancer
+```
+
+Configure basic settings:
+
+- Name: weather-app-alb
+- Scheme: Internet-facing
+- IP address type: IPv4
+
+Select VPC and availability zones:
+
+- Choose your VPC
+- Select at least 2 public subnets in different availability zones
+
+Configure security groups:
+
+- Create or select security group
+- Allow inbound traffic on ports 80 and 443
+
+## Step 3.4: Configure Listeners for HTTP and HTTPS
+
+### Listener Configuration
+
+Add two listeners:
+
+Listener 1 HTTP:
+```
+Protocol: HTTP
+Port: 80
+```
+
+Listener 2 HTTPS:
+```
+Protocol: HTTPS
+Port: 443
+```
+
+### HTTPS Listener Settings
+
+Select ACM certificate created in Step 3.1
+
+Choose SSL policy:
+```
+ELBSecurityPolicy-2016-08 recommended
+```
+
+### HTTP to HTTPS Redirect
+
+Configure HTTP listener default action:
+```
+Redirect to HTTPS
+Status code: 301 Permanent Redirect
+```
+
+This ensures all HTTP traffic redirects to HTTPS
+
+## Step 3.5: Create Target Group
+
+### Target Group Configuration
+
+Click Create target group
+
+Choose target type:
+```
+Instances
+```
+
+Configure settings:
+
+- Name: weather-frontend-tg
+- Protocol: HTTP
+- Port: NodePort of frontend service example 30008
+- VPC: Select your VPC
+
+Configure health checks:
+```
+Health check protocol: HTTP
+Health check path: /
+```
+
+Advanced health check settings:
+
+- Healthy threshold: 2
+- Unhealthy threshold: 2
+- Timeout: 5 seconds
+- Interval: 30 seconds
+
+### Register Targets
+
+Select Kubernetes worker nodes EC2 instances
+
+Click Include as pending below button
+
+Click Create target group button
+
+## Step 3.6: Attach Target Group to Load Balancer
+
+Go back to Load Balancer configuration
+
+For HTTPS listener:
+```
+Default action: Forward to target group
+Target group: weather-frontend-tg
+```
+
+Review all settings
+
+Click Create load balancer button
+
+Wait for load balancer state to become Active
+
+Note the DNS name:
+```
+weather-app-alb-1234567890.region.elb.amazonaws.com
+```
+
+## Step 3.7: Configure Route53 DNS Record
+
+### Steps to Create DNS Record
+
+Open Route 53 console
+
+Click Hosted zones
+
+Select your domain:
+```
+example.com
+```
+
+Click Create record button
+
+Configure record settings:
+
+Record name:
+```
+weather
+```
+
+Record type:
+```
+A - Routes traffic to an IPv4 address and some AWS resources
+```
+
+Enable Alias toggle:
+```
+Yes
+```
+
+Route traffic to:
+```
+Alias to Application and Classic Load Balancer
+```
+
+Choose region where ALB was created
+
+Select the Application Load Balancer from dropdown
+
+Routing policy:
+```
+Simple routing
+```
+
+Click Create records button
+
+Wait for DNS propagation typically 5 to 10 minutes
+
+## Access Application
+
+Application is now accessible at:
+```
+https://weather.example.com
+```
+
+Verification checklist:
+
+- Browser shows HTTPS lock icon
+- Certificate is valid and issued by Amazon
+- Application loads successfully
+- HTTP traffic redirects to HTTPS
+
+## Traffic Flow Summary
+```
+User Request → Route 53 DNS Resolution → ALB HTTPS 443 → Target Group → Kubernetes Worker Node NodePort → Frontend Service → Frontend Pod
+```
+
+## Security Benefits
+
+- End to end TLS encryption
+- AWS managed SSL certificates
+- Automatic certificate renewal by ACM
+- No direct exposure of Kubernetes nodes
+- Centralized traffic routing and management
+- DDoS protection via AWS Shield Standard
+- Security group level access control
+
+## Verification Commands
+
+Check Kubernetes services:
+```bash
+kubectl get svc -n weather-app
+```
+
+Check pods status:
+```bash
+kubectl get pods -n weather-app
+```
+
+Check ALB target health in AWS console:
+```
+EC2 → Target Groups → weather-frontend-tg → Targets tab
+```
+
+All targets should show healthy status
+
+## Troubleshooting
+
+If application is not accessible:
+
+Check target group health status in AWS console
+
+Verify security group allows traffic on NodePort
+
+Confirm DNS record is correctly configured in Route 53
+
+Check ACM certificate status is Issued
+
+Verify load balancer state is Active
+
+Check Kubernetes service is running:
+```bash
+kubectl get svc frontend-service -n weather-app
+```
+
+
+
+#  Step 4: Jenkins CI/CD Setup (Jenkins Server)
+
+This project uses Jenkins to automate CI/CD for a MERN Weather Application deployed on Kubernetes (kubeadm cluster).
+
+---
+
+##  Architecture Overview
+
+GitHub → Jenkins → Docker → SonarQube → Trivy → DockerHub → Kubernetes (Master Node)
+
+Jenkins communicates with:
+
+- GitHub (via Webhook)
+- SonarQube (for code quality analysis)
+- DockerHub (for image push)
+- Kubernetes Master Node (via kubeconfig)
+
+---
+
+## Step 4.1: Jenkins Installation (On EC2 / Ubuntu Server)
+
+Install:
+
+- Java (Required for Jenkins)
+- Jenkins
+- Docker
+- Trivy
+- kubectl
+- NodeJS (via Jenkins tool configuration)
+
+Start Jenkins:
+
+```
+sudo systemctl start jenkins
+sudo systemctl enable jenkins
+```
+
+---
+
+## Step 4.2: Required Jenkins Plugins
+
+Install these plugins:
+
+- Git Plugin
+- Pipeline Plugin
+- Docker Pipeline Plugin
+- SonarQube Scanner
+- Kubernetes CLI Plugin
+- NodeJS Plugin
+
+---
+
+## Step 4.3: Configure Global Tools in Jenkins
+
+Go to:
+
+Manage Jenkins → Global Tool Configuration
+
+Configure:
+
+### 1️ NodeJS
+Name: `node-18`
+
+### 2️ SonarQube Scanner
+Name: `sonar-scanner`
+
+Install automatically from Maven Central.
+
+---
+
+## Step 4.4: SonarQube Integration
+
+### Install SonarQube (on same or separate server)
+
+Start SonarQube:
+
+```
+docker run -d -p 9000:9000 sonarqube:lts
+```
+
+Open:
+```
+http://<server-ip>:9000
+```
+
+Generate Token:
+My Account → Security → Generate Token
+
+---
+
+### Add SonarQube in Jenkins
+
+Manage Jenkins → Configure System → SonarQube Servers
+
+- Name: sonar-server
+- Server URL: http://<sonarqube-ip>:9000
+- Add authentication token
+
+---
+
+## Step 4.5: DockerHub Credentials
+
+Go to:
+
+Manage Jenkins → Credentials → Add Credentials
+
+Add:
+
+- DockerHub Username
+- DockerHub Password
+
+ID example: `dockerhub-creds`
+
+---
+
+## Step 4.6: Jenkins ↔ Kubernetes Communication (kubeconfig Method)
+
+Jenkins communicates with Kubernetes using `kubeconfig`.
+
+### Step 1: Copy kubeconfig from Kubernetes Master Node
+
+On Kubernetes Master:
+
+```
+cat ~/.kube/config
+```
+
+Copy the entire content.
+
+---
+
+### Step 2: Add kubeconfig in Jenkins
+
+Manage Jenkins → Credentials → Add Credentials
+
+- Kind: Secret file
+- Upload kubeconfig file
+- ID: `kubeconfig`
+
+---
+
+### Step 3: Use kubeconfig in Jenkins Pipeline
+
+During deployment stage:
+
+- Jenkins loads kubeconfig
+- Uses `kubectl set image`
+- Waits for rollout status
+
+This allows Jenkins to:
+
+- Update deployments
+- Monitor rollout
+- Perform rollback if needed
+
+---
+
+## Step 4.7: CI/CD Pipeline Flow
+
+When code is pushed:
+
+### 1️ Checkout Code
+Jenkins pulls code from GitHub.
+
+---
+
+### 2️ SonarQube Analysis
+
+- Static Code Analysis
+- Checks bugs
+- Code smells
+- Security vulnerabilities
+- Generates Quality Gate
+
+If Quality Gate fails → Pipeline stops.
+
+---
+
+### 3️ Build Docker Images
+
+- Frontend image
+- Backend image
+- Tagged using build number or commit SHA
+
+Images are versioned (no latest tag for production).
+
+---
+
+### 4️ Trivy Security Scan
+
+Trivy scans:
+
+- OS vulnerabilities (Alpine packages)
+- Node modules vulnerabilities
+- Critical & High severity issues
+
+If CRITICAL vulnerability found → Build fails.
+
+Example output:
+
+```
+Total: 1 (CRITICAL: 1)
+```
+
+If no critical issues:
+
+```
+Total: 0 (CRITICAL: 0)
+```
+
+---
+
+### 5️ Push Images to DockerHub
+
+Successfully built images are pushed to:
+
+```
+docker.io/<username>/weather-frontend-image:<tag>
+docker.io/<username>/weather-backend-image:<tag>
+```
+
+---
+
+### 6️ Deploy to Kubernetes
+
+Jenkins executes:
+
+- `kubectl set image`
+- `kubectl rollout status`
+
+If deployment fails:
+
+- Kubernetes triggers restart
+- Jenkins can trigger rollback
+
+---
+
+##  Deployment Verification
+
+Check pods:
+
+```
+kubectl get pods -n weather-app
+```
+
+Check rollout:
+
+```
+kubectl rollout status deployment/backend -n weather-app
+```
+
+---
+
+##  Rollback Strategy
+
+If deployment fails:
+
+```
+kubectl rollout undo deployment/backend -n weather-app
+```
+
+Kubernetes automatically rolls back to previous ReplicaSet.
+
+---
+
+## Security Layers in CI/CD
+
+| Layer        | Tool        | Purpose |
+|-------------|------------|----------|
+| Code Quality | SonarQube | Static analysis |
+| Image Scan   | Trivy     | Vulnerability scanning |
+| Containerization | Docker | Immutable builds |
+| Orchestration | Kubernetes | Deployment & scaling |
+
+---
+
+
+
+# Step 5: GitHub Webhook Setup (GitHub ↔ Jenkins)
+
+Webhook allows automatic pipeline trigger on code push.
+
+---
+
+## Step 5.1: Get Jenkins Public URL
+
+Example:
+
+```
+http://<jenkins-public-ip>:8080/github-webhook/
+```
+
+Make sure port 8080 is open in Security Group.
+
+---
+
+## Step 5.2: Configure Webhook in GitHub
+
+Go to:
+
+GitHub Repository → Settings → Webhooks → Add Webhook
+
+### Add:
+
+- Payload URL:
+```
+http://<jenkins-ip>:8080/github-webhook/
+```
+
+- Content Type:
+```
+application/json
+```
+
+- Trigger:
+```
+Just the push event
+```
+
+Save.
+
+---
+
+## Step 5.3: Enable GitHub Hook Trigger in Jenkins
+
+In Jenkins Job:
+
+Configure → Build Triggers
+
+Enable:
+
+```
+GitHub hook trigger for GITScm polling
+```
+
+Now every Git push automatically triggers Jenkins pipeline.
+
+---
+
+## Complete CI/CD Flow
+
+1. Developer pushes code to GitHub
+2. GitHub Webhook triggers Jenkins
+3. Jenkins pulls code
+4. SonarQube analyzes code
+5. Docker images are built
+6. Trivy scans images
+7. Images pushed to DockerHub
+8. Kubernetes deployment updated
+9. Rollout status verified
+10. Application updated without downtime
+
+---
+
+## Final Result
+
+- Automated CI/CD  
+- Secure image scanning  
+- Versioned deployments  
+- Zero-downtime rollout  
+- Automatic rollback support  
+- Production-ready DevSecOps pipeline  
+
+---
+
+##  Project Status
+
+This project successfully implements:
+
+- MERN 3-tier architecture
+- Docker containerization
+- Kubernetes (kubeadm cluster)
+- Jenkins CI/CD
+- SonarQube code analysis
+- Trivy security scanning
+- GitHub Webhook automation
+- Version-controlled deployments
+
+---
+
+
+
+
+# Author
+Development + Devops :- Samarth Funde
+
+# Contact
+samarthf28@gmail.com
+
+
+
