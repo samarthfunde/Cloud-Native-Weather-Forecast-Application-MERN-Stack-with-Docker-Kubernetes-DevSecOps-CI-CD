@@ -6,6 +6,8 @@ The purpose of this project is to build a cloud-native 3-tier MERN stack Weather
 
 ---
 
+## Stepwise Documentation
+
 
 ## step 1: Dockerized Application
 
@@ -84,7 +86,6 @@ Weather_Application_Docker/
 │
 ├── frontend/
 │   ├── Dockerfile
-│   ├── .env
 │   └── src/
 │
 ├── backend/
@@ -98,28 +99,41 @@ Weather_Application_Docker/
 
 ---
 
-###  Environment Variables
+### Environment Variables Configuration
 
-### Frontend `.env`
+### Frontend nginx.conf
 
-```env
-REACT_APP_API_URL=http://public-ip:5000
+Frontend uses nginx reverse proxy configuration to communicate with backend.
+
+Configuration file:
+```nginx
+server {
+    listen 80;
+    location / {
+        root /usr/share/nginx/html;
+        index index.html;
+        try_files $uri /index.html;
+    }
+    location /api/ {
+        proxy_pass http://backend-service:5000/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
 ```
->  Frontend talks to the backend **using the ip**, 
 
----
+Frontend communicates with backend using nginx reverse proxy configuration instead of environment variables.
 
-### Backend `.env`
-
+### Backend .env
 ```env
 PORT=5000
-MONGO_URI=mongodb://weather-db:27017/weatherdb
+MONGO_URI=mongodb://mongo-service:27017/weatherdb
 ```
->  Backend talks to the database using the **service/container name**.
 
----
+Backend communicates with MongoDB using Kubernetes service name.
 
-###  Dockerfiles
+##  Dockerfiles
 
 ### Frontend `Dockerfile`
 
