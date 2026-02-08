@@ -1225,7 +1225,10 @@ Kubernetes automatically rolls back to previous ReplicaSet.
 
 <img width="1919" height="946" alt="Screenshot 2026-02-05 005737" src="https://github.com/user-attachments/assets/37ecb425-8a81-440b-b44a-47b087423139" />
 
-#### Success of CI/CD
+<img width="780" height="247" alt="image" src="https://github.com/user-attachments/assets/f0688581-3344-4aed-87f4-2cda1871765e" />
+
+
+#### Success Images of CI/CD
 
 <img width="1918" height="692" alt="image" src="https://github.com/user-attachments/assets/4ac8ac59-25f2-443c-8b72-6210ecc59945" />
 
