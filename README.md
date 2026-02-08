@@ -27,14 +27,6 @@ Database (MongoDB)
 
 
 ```
-Docker (Local / VM)
-Backend ↔ DB → container name
-Frontend → Backend → IP / domain
-
-Kubernetes
-Pod ↔ Pod → Service name
-Browser → App → Ingress / LB URL
-
 
 
 | Tier         | Component | Responsibility                   |
@@ -42,6 +34,8 @@ Browser → App → Ingress / LB URL
 | Presentation | Frontend  | Shows weather data to users      |
 | Application  | Backend   | Handles API requests & logic     |
 | Data         | Database  | Stores data persistently         |
+
+Weather API used: Open-Meteo
 
 ---
 
@@ -147,8 +141,8 @@ COPY . .
 RUN npm run build
 
 # Runtime stage
-FROM nginx:alpine3.23
-RUN apk update && apk upgrade
+FROM nginx:alpine3.23   #( i used this version after trivy shows CRITICAL status )
+RUN apk update && apk upgrade #( i updated & upgraded after trivy shows CRITICAL status )
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/build /usr/share/nginx/html
 EXPOSE 80
@@ -163,7 +157,7 @@ CMD ["nginx", "-g", "daemon off;"]
 FROM node:20.11-alpine3.1
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+RUN npm ci  # clean install 
 COPY . .
 EXPOSE 5000
 CMD ["node", "index.js"]
@@ -182,8 +176,6 @@ services:
     container_name: weather-frontend
     ports:
       - "3000:3000"
-    env_file:
-      - ./frontend/.env
     depends_on:
       - weather-backend
 
@@ -217,7 +209,7 @@ Docker Compose **automatically** creates a custom bridge network:
 weather_application_default
 ```
 
-All containers communicate using their **service names**:
+All containers communicate using their **service names** / Container names:
 
 | Container          | Name               |
 |--------------------|--------------------|
@@ -301,7 +293,7 @@ db.weather.find()
 
 ---
 
-###  How Containers Communicate (Interview Answer)
+###  How Containers Communicate 
 
 1. Docker Compose creates a **custom bridge network** automatically.
 2. Containers communicate using ** ip & service names** 
@@ -472,7 +464,7 @@ Get service details:
 kubectl get svc -n weather-app
 ```
 
-If using NodePort service access via:
+using NodePort service access via:
 ```
 http://NODE_IP:NODE_PORT
 ```
@@ -539,7 +531,7 @@ Execute commands inside pod:
 kubectl exec -it POD_NAME -n weather-app -- /bin/bash
 ```
 
-### Delete All Resources
+### Delete All Resources ( Optional Commands - Not Recommended if we do the jenkins implementation)
 
 Delete entire namespace and all resources:
 ```bash
@@ -608,7 +600,7 @@ This step explains how the application is exposed securely to end users using AW
 ```
 User Browser
      |
-     | https://weather.example.com
+     | https://weather.samarth.cloud
      ↓
 Route 53 DNS
      ↓
@@ -623,7 +615,7 @@ Frontend Pod → Backend Service → Backend Pod → MongoDB
 
 Before starting ensure:
 
-- Domain is registered example: example.com
+- Domain is registered example: samarth.cloud
 - Kubernetes cluster is running on AWS EC2 instances
 - Frontend service is exposed via NodePort
 - IAM permissions for Route53, ACM, ELB, EC2
@@ -647,7 +639,7 @@ Public certificate
 
 Add domain name:
 ```
-weather.example.com
+weather.samarth.cloud
 ```
 
 Choose validation method:
@@ -814,7 +806,7 @@ Click Hosted zones
 
 Select your domain:
 ```
-example.com
+samarth.com
 ```
 
 Click Create record button
@@ -858,7 +850,7 @@ Wait for DNS propagation typically 5 to 10 minutes
 
 Application is now accessible at:
 ```
-https://weather.example.com
+https://weather.samarth.cloud
 ```
 
 Verification checklist:
@@ -880,7 +872,6 @@ User Request → Route 53 DNS Resolution → ALB HTTPS 443 → Target Group → 
 - Automatic certificate renewal by ACM
 - No direct exposure of Kubernetes nodes
 - Centralized traffic routing and management
-- DDoS protection via AWS Shield Standard
 - Security group level access control
 
 ### Verification Commands
@@ -906,15 +897,11 @@ All targets should show healthy status
 
 If application is not accessible:
 
-Check target group health status in AWS console
-
-Verify security group allows traffic on NodePort
-
-Confirm DNS record is correctly configured in Route 53
-
-Check ACM certificate status is Issued
-
-Verify load balancer state is Active
+- Check target group health status in AWS console
+- Verify security group allows traffic on NodePort
+- Confirm DNS record is correctly configured in Route 53
+- Check ACM certificate status is Issued
+- Verify load balancer state is Active
 
 Check Kubernetes service is running:
 ```bash
@@ -949,6 +936,7 @@ Install:
 - Java (Required for Jenkins)
 - Jenkins
 - Docker
+- SonarQube
 - Trivy
 - kubectl
 - NodeJS (via Jenkins tool configuration)
@@ -970,6 +958,7 @@ Install these plugins:
 - Pipeline Plugin
 - Docker Pipeline Plugin
 - SonarQube Scanner
+- SonarQube Quality Gate
 - Kubernetes CLI Plugin
 - NodeJS Plugin
 
@@ -995,7 +984,7 @@ Install automatically from Maven Central.
 
 ### Step 4.4: SonarQube Integration
 
-### Install SonarQube (on same or separate server)
+### Install SonarQube (on same or separate server )
 
 Start SonarQube:
 
@@ -1105,7 +1094,7 @@ If Quality Gate fails → Pipeline stops.
 
 - Frontend image
 - Backend image
-- Tagged using build number or commit SHA
+- Tagged using build number
 
 Images are versioned (no latest tag for production).
 
@@ -1191,12 +1180,12 @@ Kubernetes automatically rolls back to previous ReplicaSet.
 
 ### Security Layers in CI/CD
 
-| Layer        | Tool        | Purpose |
-|-------------|------------|----------|
-| Code Quality | SonarQube | Static analysis |
-| Image Scan   | Trivy     | Vulnerability scanning |
-| Containerization | Docker | Immutable builds |
-| Orchestration | Kubernetes | Deployment & scaling |
+| Layer            | Tool          | Purpose                 |
+|------------------|---------------|-------------------------|
+| Code Quality     | SonarQube     | Static analysis         |
+| Image Scan       | Trivy         | Vulnerability scanning  |
+| Containerization | Docker        | Immutable builds        |
+| Orchestration    | Kubernetes    | Deployment & scaling    |
 
 
 
@@ -1297,6 +1286,8 @@ GitHub hook trigger for GITScm polling
 ```
 
 Now every Git push automatically triggers Jenkins pipeline.
+& after pushed image so in the k8s deployment image version will update through the jenkins cicd
+check on k8s master : kubectl describe pod podname -n weather-app
 
 ---
 
@@ -1321,7 +1312,6 @@ Now every Git push automatically triggers Jenkins pipeline.
 - Secure image scanning  
 - Versioned deployments  
 - Zero-downtime rollout  
-- Automatic rollback support  
 - Production-ready DevSecOps pipeline  
 
 ---
